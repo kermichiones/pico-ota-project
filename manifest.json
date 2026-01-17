@@ -1,7 +1,6 @@
 {
     "files": [
         {"remote": "app/run.py", "local": "app/run.py"},
-        {"remote": "app/utils.py", "local": "app/utils.py"},
         {"remote": "app/st7735.py", "local": "app/st7735.py"}
     ]
 }
