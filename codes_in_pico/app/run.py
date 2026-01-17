@@ -2,7 +2,10 @@ import time
 import math
 import random
 from machine import Pin, SPI, PWM
-import st7735
+try:
+    import app.st7735 as st7735
+except ImportError:
+    import st7735
 
 # --- SETUP ---
 # SPI0
