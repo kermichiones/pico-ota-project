@@ -1,5 +1,6 @@
 import machine
 import time
+import framebuf  # YAZI İÇİN GEREKLİ KÜTÜPHANE EKLENDİ
 from math import sqrt
 
 # ST7735 constants
@@ -43,7 +44,10 @@ class TFT(object):
         self.reset = machine.Pin(reset, machine.Pin.OUT, value=0)
         self.cs = machine.Pin(cs, machine.Pin.OUT, value=1)
         self._size = (128, 128)
-        self._offset = (0, 0) # Adjust if screen content is shifted (e.g. 2, 1 or 2, 3)
+        
+        # KIRMIZI dogru ciktigi icin OFFSET (0, 0) OLARAK AYARLANDI
+        self._offset = (0, 0) 
+        
         self.buf = bytearray(2)
 
     def _write_cmd(self, cmd):
@@ -100,9 +104,7 @@ class TFT(object):
 
         self._write_cmd(INVOFF)
         self._write_cmd(MADCTL)
-        # 0xC8 = BGR, MX, MY (Might need adjustment based on mounting)
-        # 0xC0 = RGB ...
-        self._write_data(bytearray([0xC0])) # Try 0xC0 or 0xC8
+        self._write_data(bytearray([0xC0])) 
 
         self._write_cmd(COLMOD)
         self._write_data(bytearray([0x05])) # 16-bit mode
@@ -118,8 +120,6 @@ class TFT(object):
         self._write_cmd(DISPON)
         time.sleep_ms(100)
         
-        # 128x128 Black Tab usually needs 0,0 offset or sometimes 2,1
-        # Set address window to full screen initially
         self.set_window(0, 0, 127, 127)
 
     def set_window(self, x0, y0, x1, y1):
@@ -146,7 +146,7 @@ class TFT(object):
         
         high = color >> 8
         low = color & 0xFF
-        # Create a buffer line by line or chunks to save RAM
+        
         chunk_size = 1024
         buffer = bytearray(chunk_size * 2)
         for i in range(chunk_size):
@@ -164,16 +164,30 @@ class TFT(object):
             self.set_window(x, y, x, y)
             self._write_data(bytearray([color >> 8, color & 0xFF]))
 
-    def text(self, x, y, string, color, size=1):
-        # Basic 5x7 font data (truncated for brevity, normally you'd import a font)
-        # Using a very simple built-in drawing for demo if needed, or rely on framebuf if user had it.
-        # But here I'll just skip complex font rendering to keep file size small and use lines/shapes
-        # Or I can include a tiny font map.
-        # For "Cool graphics", geometric shapes are better.
-        pass
+    # --- TEXT FONKSIYONU DUZELTILDI ---
+    def text(self, x, y, string, color):
+        w = len(string) * 8
+        h = 8
+        
+        # Framebuffer icin tampon bellek olustur
+        # RGB565 formatinda her piksel 2 byte'tir
+        buffer = bytearray(w * h * 2)
+        
+        # Framebuf nesnesi yarat
+        fb = framebuf.FrameBuffer(buffer, w, h, framebuf.RGB565)
+        fb.fill(0) # Siyah arka plan
+        
+        # Framebuffer (Little Endian) ile ST7735 (Big Endian) arasinda renk farki olusabilir.
+        # Bu yuzden renk byte'larini burada ters ceviriyoruz ki dogru renk ciksin.
+        swapped_color = ((color & 0xFF) << 8) | (color >> 8)
+        
+        fb.text(string, 0, 0, swapped_color)
+        
+        # Ekrana bas
+        self.set_window(x, y, x + w - 1, y + h - 1)
+        self._write_data(buffer)
     
-    # Helper to convert RGB888 to RGB565
     @staticmethod
     def color565(r, g, b):
         return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
-
+ 
